@@ -1,0 +1,113 @@
+---
+title: "Machine Learning-Course Project"
+author: "Lisa McCormick"
+format: html
+editor: visual
+---
+
+## Predicting Quality of Exercise Using Personal Activity Devices
+
+Using devices such as *Jawbone Up*, *Nike FuelBand*, and *Fitbit* it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement -- a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how *much* of a particular activity they do, but they rarely quantify *how well they do it*.
+
+Six participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The goal of this project will be to use data from accelerometers on the belt, forearm, arm, and dumbell of these participants to predict the manner in which they did the exercise.
+
+The data for this project can be found here : <http://groupware.les.inf.puc-rio.br/har>
+
+## Loading the data
+
+Since we're only interested in the accelerometer data, let's load the data and only include the accelerometer data, the names of the participants, and the 5 ways in which they did the barbell lift exercises (classe). We'll also make sure there are no missing values.
+
+```{r}
+library(tidyverse)
+library(caret)
+
+df <- read.csv(file.choose(),header = TRUE) ##choose pml-training .csv file
+
+df_new <- df %>% select(user_name, contains("accel"), classe) %>% select(!contains("var"))
+
+any(is.na(df_new))
+View(df_new)
+
+```
+
+## Using cross validation
+
+We will partition the training dataset into a training and testing dataset to be able to evaluate the model after we build it.
+
+```{r}
+
+set.seed(12345)
+
+inTrain = createDataPartition(df_new$classe, p = 0.75, list = FALSE)
+
+training = df_new[ inTrain,]
+
+testing = df_new[-inTrain,]
+
+dim(training) ; dim(testing)
+```
+
+## Building the model
+
+We have at least 18 predictors which may not all be useful in our model. We can do a principal component analysis to further reduce our predictors.
+
+```{r}
+
+library(caret)
+
+princo <- preProcess(training, method="pca", thresh=0.8)
+
+trainingpc <- predict(princo, training)
+summary(trainingpc)
+
+```
+
+There are 6 principal components now so let's build our model.
+
+I decided to use a random forest model for these data because of the accuracy. This model takes awhile to compute.
+
+```{r}
+start.time <- Sys.time()
+
+set.seed(12345)
+mod1 <- train(classe ~ ., method="rf", data=trainingpc)
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+mod1$finalModel
+
+```
+
+## Testing the model
+
+We will now run our model on the testing dataset.
+
+```{r}
+
+new_test <- predict(princo, testing)
+
+pred1 <- predict(mod1, new_test)
+
+conmat <- confusionMatrix(as.factor(testing$classe), pred1)
+
+conmat
+
+```
+
+The accuracy of this model is 80%.
+
+There are also several out of error estimates listed in the Statistics by Class table.
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
